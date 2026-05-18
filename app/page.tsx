@@ -7,7 +7,8 @@ import { Id } from "@/convex/_generated/dataModel";
 import { 
   startVettingProcess, 
   discoverJobsAction, 
-  seedPastProposalsAction 
+  seedPastProposalsAction,
+  generateProposalAction
 } from "./actions/pitchActions";
 import { 
   Briefcase, 
@@ -36,6 +37,9 @@ export default function Dashboard() {
   const [jobUrl, setJobUrl] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Proposal Engine State
+  const [isGeneratingProposal, setIsGeneratingProposal] = useState(false);
   
   // Job Discovery States
   const [isDiscovering, setIsDiscovering] = useState(false);
@@ -115,6 +119,21 @@ export default function Dashboard() {
       console.error(err);
     } finally {
       setIsSeeding(false);
+    }
+  };
+
+  const handleGenerateProposal = async (leadId: Id<"leads">) => {
+    setIsGeneratingProposal(true);
+    setError(null);
+    try {
+      const res = await generateProposalAction(leadId);
+      if (!res.success) {
+        setError(res.error || "Failed to generate proposal");
+      }
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setIsGeneratingProposal(false);
     }
   };
 
@@ -514,6 +533,94 @@ export default function Dashboard() {
                         </div>
                       )}
                     </div>
+
+                    {/* Day 4 Proposal Generation Engine & Pricing Deck */}
+                    {activeDossier && (
+                      <div className="glass-card p-6 border border-accent/20 relative mt-6">
+                        <div className="absolute top-4 right-4 flex items-center gap-1.5 text-[10px] bg-accent/10 text-accent px-2 py-0.5 rounded font-bold uppercase tracking-wider">
+                          <Sparkles className="h-3 w-3" />
+                          Proposal Engine Active
+                        </div>
+                        <h3 className="font-extrabold text-lg flex items-center gap-2 mb-4 text-foreground">
+                          <FileText className="h-5 w-5 text-accent" />
+                          AI Pricing Strategy & Proposal Draft
+                        </h3>
+
+                        {activeLead.proposalDraft ? (
+                          <div className="flex flex-col gap-6 animate-fade-in">
+                            
+                            {/* Horizontal Pricing Tiers Deck */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                              {activeLead.pricingTiers?.map((tier: any, idx: number) => (
+                                <div 
+                                  key={idx} 
+                                  className={`glass-card p-5 border flex flex-col justify-between transition-all hover:scale-[1.02] ${
+                                    idx === 1 
+                                      ? 'border-primary ring-1 ring-primary bg-primary/5' 
+                                      : 'border-border'
+                                  }`}
+                                >
+                                  <div>
+                                    <div className="flex justify-between items-center mb-2">
+                                      <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">{idx === 0 ? "Basic" : idx === 1 ? "Standard" : "Premium"}</span>
+                                      {idx === 1 && (
+                                        <span className="bg-primary text-white text-[9px] font-extrabold px-2 py-0.5 rounded uppercase tracking-wider shadow">Most Popular</span>
+                                      )}
+                                    </div>
+                                    <h4 className="font-extrabold text-sm text-foreground line-clamp-1 mb-1">{tier.name}</h4>
+                                    <div className="text-3xl font-black text-foreground my-2">{tier.price}</div>
+                                    <ul className="space-y-2 mt-4">
+                                      {tier.scope?.map((item: string, sIdx: number) => (
+                                        <li key={sIdx} className="text-xs text-muted-foreground flex items-start gap-1.5">
+                                          <CheckCircle className="h-3.5 w-3.5 text-accent shrink-0 mt-0.5" />
+                                          <span>{item}</span>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* Full Markdown Proposal Draft */}
+                            <div className="mt-4">
+                              <h4 className="text-xs font-bold uppercase text-muted-foreground mb-3 flex items-center gap-1">
+                                <FileText className="h-3.5 w-3.5 text-accent" />
+                                Generated Custom Proposal Draft (Markdown)
+                              </h4>
+                              <div className="bg-background border border-border p-5 rounded-lg max-h-96 overflow-auto text-xs text-foreground leading-relaxed whitespace-pre-line font-mono select-text">
+                                {activeLead.proposalDraft}
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center justify-center py-12 text-center">
+                            <FileText className="h-10 w-10 text-muted-foreground/60 mb-3" />
+                            <h4 className="font-bold text-sm text-foreground mb-1">Generate Tailored Scope & Proposal</h4>
+                            <p className="text-xs text-muted-foreground max-w-md mb-6 leading-relaxed">
+                              Run the Proposal Generation Engine to compile executive milestone timelines and structure 3 distinct pricing tiers aligned with the client's budget.
+                            </p>
+                            <button
+                              onClick={() => handleGenerateProposal(activeLead._id)}
+                              disabled={isGeneratingProposal}
+                              className="bg-accent hover:bg-accent/90 text-white font-bold py-2.5 px-6 rounded-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50 shadow-md shadow-accent/20 animate-pulse hover:animate-none"
+                            >
+                              {isGeneratingProposal ? (
+                                <>
+                                  <RefreshCw className="h-4 w-4 animate-spin" />
+                                  Writing Proposal...
+                                </>
+                              ) : (
+                                <>
+                                  <Sparkles className="h-4 w-4 text-white" />
+                                  Generate Bid Proposal & Tiers
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-20 text-center glass-card">

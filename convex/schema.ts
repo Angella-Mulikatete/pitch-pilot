@@ -34,6 +34,16 @@ export default defineSchema({
     ),
     clientDossier: v.optional(v.string()),
     proposalPdfUrl: v.optional(v.string()),
+    proposalDraft: v.optional(v.string()),
+    pricingTiers: v.optional(
+      v.array(
+        v.object({
+          name: v.string(),
+          price: v.string(),
+          scope: v.array(v.string()),
+        })
+      )
+    ),
     emailDraft: v.optional(v.string()),
   }),
 

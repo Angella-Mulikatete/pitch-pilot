@@ -90,3 +90,25 @@ export const updateLeadDossier = mutation({
   },
 });
 
+export const updateLeadProposal = mutation({
+  args: {
+    id: v.id("leads"),
+    proposalDraft: v.string(),
+    pricingTiers: v.array(
+      v.object({
+        name: v.string(),
+        price: v.string(),
+        scope: v.array(v.string()),
+      })
+    ),
+  },
+  handler: async (ctx, args) => {
+    const { id, proposalDraft, pricingTiers } = args;
+    await ctx.db.patch(id, {
+      proposalDraft,
+      pricingTiers,
+      status: "READY",
+    });
+  },
+});
+

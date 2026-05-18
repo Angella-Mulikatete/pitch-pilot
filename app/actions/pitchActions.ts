@@ -238,3 +238,43 @@ An elegant, HIPAA-compliant patient dashboard mobile application built with Reac
     return { success: false, error: String(error) };
   }
 }
+
+/**
+ * Generates proposal draft and structures multi-tiered pricing.
+ */
+export async function generateProposalAction(leadId: Id<"leads">) {
+  try {
+    // 1. Fetch the current lead details
+    const lead = await convex.query(api.leads.getLead, { id: leadId });
+    if (!lead) {
+      throw new Error("Lead not found");
+    }
+
+    // 2. Fetch the proposal agent from factory
+    const proposalAgent = AgentFactory.get("proposal") as any;
+    
+    // 3. Execute Proposal Generation
+    const result = await proposalAgent.execute({
+      jobTitle: lead.jobTitle,
+      company: lead.company,
+      description: lead.description,
+      clientDossier: lead.clientDossier,
+    });
+
+    // 4. Save the results back to Convex database
+    await convex.mutation(api.leads.updateLeadProposal, {
+      id: leadId,
+      proposalDraft: result.proposalDraft,
+      pricingTiers: result.pricingTiers,
+    });
+
+    return { 
+      success: true, 
+      proposalDraft: result.proposalDraft, 
+      pricingTiers: result.pricingTiers 
+    };
+  } catch (error) {
+    console.error("Proposal generation action failed:", error);
+    return { success: false, error: String(error) };
+  }
+}
