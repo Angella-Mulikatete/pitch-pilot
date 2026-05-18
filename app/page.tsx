@@ -64,6 +64,23 @@ export default function Dashboard() {
   // Find current selected lead
   const activeLead = leads.find((l: any) => l._id === selectedLeadId) || leads[0];
 
+  // Proposal Success Analytics
+  const totalLeads = leads.length;
+  const fullyVettedLeads = leads.filter((l: any) => l.fitScore !== undefined).length;
+  const clientDossiers = leads.filter((l: any) => l.clientDossier !== undefined).length;
+  const proposalsReady = leads.filter((l: any) => l.proposalDraft !== undefined).length;
+  const averageVettingScore = totalLeads > 0 
+    ? Math.round(leads.reduce((acc: number, l: any) => acc + (l.fitScore || 0), 0) / totalLeads) 
+    : 0;
+
+  const estimatedPipeline = leads.reduce((acc: number, l: any) => {
+    if (!l.pricingTiers) return acc;
+    const stdTier = l.pricingTiers[1] || l.pricingTiers[0];
+    if (!stdTier) return acc;
+    const priceNum = parseInt(stdTier.price.replace(/[^0-9]/g, ""), 10);
+    return acc + (isNaN(priceNum) ? 0 : priceNum);
+  }, 0);
+
   const handleIntakeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!jobUrl) return;
@@ -250,6 +267,60 @@ export default function Dashboard() {
                 <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
                   PitchPilot automatically discovers high-intent gigs via SerpAPI, vets lead compatibility, maps decision-makers, and leverages vector RAG to craft personalized campaigns.
                 </p>
+              </div>
+
+              {/* Proposal Success Analytics Dashboard */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                
+                {/* Metric 1: Pipeline Value */}
+                <div className="glass-card p-5 border border-primary/20 relative overflow-hidden shadow">
+                  <div className="absolute top-2 right-2 p-1.5 bg-primary/10 rounded text-primary">
+                    <TrendingUp className="h-4 w-4" />
+                  </div>
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Est. Pipeline Value</span>
+                  <h4 className="text-2xl font-black text-foreground mt-2">${estimatedPipeline.toLocaleString()}</h4>
+                  <p className="text-[9px] text-muted-foreground mt-1.5">Based on standard packages</p>
+                </div>
+
+                {/* Metric 2: Proposal Progress */}
+                <div className="glass-card p-5 border border-border relative overflow-hidden shadow">
+                  <div className="absolute top-2 right-2 p-1.5 bg-accent/10 rounded text-accent">
+                    <FileText className="h-4 w-4" />
+                  </div>
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Proposals Compiled</span>
+                  <h4 className="text-2xl font-black text-foreground mt-2">{proposalsReady} / {totalLeads}</h4>
+                  
+                  {/* Progress bar */}
+                  <div className="w-full bg-border h-1 rounded-full mt-3.5 overflow-hidden">
+                    <div 
+                      className="bg-accent h-full rounded-full transition-all"
+                      style={{ width: `${totalLeads > 0 ? (proposalsReady / totalLeads) * 100 : 0}%` }}
+                    ></div>
+                  </div>
+                </div>
+
+                {/* Metric 3: Average Partner Score */}
+                <div className="glass-card p-5 border border-border relative overflow-hidden shadow">
+                  <div className={`absolute top-2 right-2 p-1.5 rounded ${
+                    averageVettingScore >= 65 ? 'bg-primary/10 text-primary' : averageVettingScore >= 45 ? 'bg-yellow-500/10 text-yellow-500' : 'bg-red-500/10 text-red-500'
+                  }`}>
+                    <CheckCircle className="h-4 w-4" />
+                  </div>
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Avg. Partner Fit</span>
+                  <h4 className="text-2xl font-black text-foreground mt-2">{averageVettingScore}%</h4>
+                  <p className="text-[9px] text-muted-foreground mt-1.5">Autonomous lead match score</p>
+                </div>
+
+                {/* Metric 4: Vetted & Synthesized Dossiers */}
+                <div className="glass-card p-5 border border-border relative overflow-hidden shadow">
+                  <div className="absolute top-2 right-2 p-1.5 bg-primary/10 rounded text-primary animate-pulse">
+                    <BrainCircuit className="h-4 w-4" />
+                  </div>
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">RAG Dossiers Done</span>
+                  <h4 className="text-2xl font-black text-foreground mt-2">{clientDossiers}</h4>
+                  <p className="text-[9px] text-muted-foreground mt-1.5">Powered by vector semantic search</p>
+                </div>
+
               </div>
 
               {/* SerpAPI Discovery Form */}
