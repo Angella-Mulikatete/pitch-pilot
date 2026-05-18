@@ -168,7 +168,8 @@ export default function Dashboard() {
   const activeDossier = activeLead ? getParsedDossier(activeLead.clientDossier) : null;
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <>
+      <div className="flex h-screen overflow-hidden print:hidden">
       {/* Sidebar */}
       <aside className="w-64 border-r border-border glass-panel flex flex-col justify-between hidden md:flex m-4 mr-0 z-10 animate-fade-in">
         <div>
@@ -602,10 +603,19 @@ export default function Dashboard() {
 
                             {/* Full Markdown Proposal Draft */}
                             <div className="mt-4">
-                              <h4 className="text-xs font-bold uppercase text-muted-foreground mb-3 flex items-center gap-1">
-                                <FileText className="h-3.5 w-3.5 text-accent" />
-                                Generated Custom Proposal Draft (Markdown)
-                              </h4>
+                              <div className="flex justify-between items-center mb-3">
+                                <h4 className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-1">
+                                  <FileText className="h-3.5 w-3.5 text-accent" />
+                                  Generated Custom Proposal Draft (Markdown)
+                                </h4>
+                                <button 
+                                  onClick={() => window.print()}
+                                  className="bg-accent/10 hover:bg-accent/20 text-accent font-bold py-1.5 px-3 rounded text-[10px] uppercase tracking-wider transition-all flex items-center gap-1.5 shadow"
+                                >
+                                  <Maximize2 className="h-3 w-3" />
+                                  Export PDF Proposal
+                                </button>
+                              </div>
                               <div className="bg-background border border-border p-5 rounded-lg max-h-96 overflow-auto text-xs text-foreground leading-relaxed whitespace-pre-line font-mono select-text">
                                 {activeLead.proposalDraft}
                               </div>
@@ -774,5 +784,101 @@ export default function Dashboard() {
         </div>
       </main>
     </div>
+
+    {/* High-Fidelity Print-Only Business Proposal Document */}
+    {activeLead && activeLead.proposalDraft && (
+      <div className="hidden print:block bg-white text-black p-12 min-h-screen font-serif select-text">
+        {/* Letterhead Header */}
+        <div className="flex justify-between items-start border-b-2 border-primary/20 pb-6 mb-8">
+          <div>
+            <h1 className="text-3xl font-black tracking-tight text-primary">PITCHPILOT STUDIOS</h1>
+            <p className="text-xs text-muted-foreground font-semibold mt-1">High-Intent Engineering & Digital Strategy</p>
+          </div>
+          <div className="text-right text-xs text-muted-foreground">
+            <p>studios@pitchpilot.com</p>
+            <p>www.pitchpilot.com</p>
+            <p>{new Date().toLocaleDateString()}</p>
+          </div>
+        </div>
+
+        {/* Proposal Summary Section */}
+        <div className="mb-8">
+          <h2 className="text-xl font-bold border-b border-border pb-2 mb-4 uppercase tracking-wider text-foreground">Project Scope & Bid Brief</h2>
+          <table className="w-full text-xs text-left border-collapse">
+            <tbody>
+              <tr className="border-b border-border/40">
+                <td className="py-2.5 font-bold text-muted-foreground w-1/4">Project Title:</td>
+                <td className="py-2.5 text-foreground font-bold">{activeLead.jobTitle || "Custom Development"}</td>
+              </tr>
+              <tr className="border-b border-border/40">
+                <td className="py-2.5 font-bold text-muted-foreground">Client Name:</td>
+                <td className="py-2.5 text-foreground font-bold">{activeLead.company || "Valued Customer"}</td>
+              </tr>
+              <tr className="border-b border-border/40">
+                <td className="py-2.5 font-bold text-muted-foreground">Decision Maker:</td>
+                <td className="py-2.5 text-foreground font-bold">
+                  {activeLead.decisionMaker?.name ?? "Key Stakeholder"} 
+                  {activeLead.decisionMaker?.role ? ` (${activeLead.decisionMaker.role})` : ""}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        {/* Scoping & Pricing tiers Table */}
+        {activeLead.pricingTiers && activeLead.pricingTiers.length > 0 && (
+          <div className="mb-8 page-break-inside-avoid">
+            <h2 className="text-xl font-bold border-b border-border pb-2 mb-4 uppercase tracking-wider text-foreground">Pricing Strategy & Options</h2>
+            <table className="w-full border border-border text-xs text-left">
+              <thead>
+                <tr className="bg-muted border-b border-border">
+                  <th className="p-3 font-bold uppercase text-[10px] w-1/4">Package Tier</th>
+                  <th className="p-3 font-bold uppercase text-[10px] w-1/6">Est. Budget</th>
+                  <th className="p-3 font-bold uppercase text-[10px]">Deliverables Scope</th>
+                </tr>
+              </thead>
+              <tbody>
+                {activeLead.pricingTiers.map((tier: any, idx: number) => (
+                  <tr key={idx} className="border-b border-border">
+                    <td className="p-3 font-bold text-foreground align-top">{tier.name}</td>
+                    <td className="p-3 font-black text-primary align-top">{tier.price}</td>
+                    <td className="p-3 text-muted-foreground align-top">
+                      <ul className="list-disc pl-4 space-y-1">
+                        {tier.scope?.map((item: string, sIdx: number) => (
+                          <li key={sIdx}>{item}</li>
+                        ))}
+                      </ul>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Proposal Body */}
+        <div className="mb-8 font-serif leading-relaxed text-sm select-text whitespace-pre-line">
+          <h2 className="text-xl font-bold border-b border-border pb-2 mb-4 uppercase tracking-wider text-foreground">Technical Solution & Bid Brief</h2>
+          {activeLead.proposalDraft}
+        </div>
+
+        {/* Sign-off / Signature lines */}
+        <div className="mt-16 grid grid-cols-2 gap-12 page-break-inside-avoid">
+          <div className="border-t border-border pt-4">
+            <p className="text-xs font-bold text-muted-foreground uppercase">Prepared By:</p>
+            <p className="text-sm font-bold text-foreground mt-1">PitchPilot Studios Sales & Engineering</p>
+            <div className="mt-8 h-10 border-b border-border border-dashed"></div>
+            <p className="text-[10px] text-muted-foreground mt-2">Signature & Date</p>
+          </div>
+          <div className="border-t border-border pt-4">
+            <p className="text-xs font-bold text-muted-foreground uppercase">Accepted By:</p>
+            <p className="text-sm font-bold text-foreground mt-1">{activeLead.company || "Valued Customer"}</p>
+            <div className="mt-8 h-10 border-b border-border border-dashed"></div>
+            <p className="text-[10px] text-muted-foreground mt-2">Signature & Date</p>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
