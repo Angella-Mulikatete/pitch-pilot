@@ -39,3 +39,24 @@ export const updateLeadStatus = mutation({
     await ctx.db.patch(args.id, { status: args.status });
   },
 });
+
+export const updateLeadDetails = mutation({
+  args: {
+    id: v.id("leads"),
+    fitScore: v.optional(v.number()),
+    jobTitle: v.optional(v.string()),
+    company: v.optional(v.string()),
+    decisionMaker: v.optional(
+      v.object({
+        name: v.string(),
+        role: v.string(),
+        linkedIn: v.optional(v.string()),
+      })
+    ),
+  },
+  handler: async (ctx, args) => {
+    const { id, ...details } = args;
+    await ctx.db.patch(id, details);
+  },
+});
+

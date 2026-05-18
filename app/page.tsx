@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { startVettingProcess } from "./actions/pitchActions";
 import { 
   Briefcase, 
   LayoutDashboard, 
@@ -10,19 +11,37 @@ import {
   Users, 
   BrainCircuit,
   Search,
-  Bell
+  Bell,
+  CheckCircle,
+  XCircle
 } from "lucide-react";
 
 export default function Dashboard() {
   const [jobUrl, setJobUrl] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [evaluation, setEvaluation] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!jobUrl) return;
+    
     setIsProcessing(true);
-    // TODO: Wire up to Convex mutation to create lead and start vetting
-    setTimeout(() => setIsProcessing(false), 2000); // Mock processing
+    setEvaluation(null);
+    setError(null);
+    
+    try {
+      const result = await startVettingProcess(jobUrl);
+      if (result.success) {
+        setEvaluation(result.evaluation);
+      } else {
+        setError(result.error || "Failed to process lead");
+      }
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -131,18 +150,48 @@ export default function Dashboard() {
               </button>
             </form>
 
+            {error && (
+              <div className="bg-red-500/10 border border-red-500/50 text-red-500 p-4 rounded-lg mb-8 animate-fade-in flex items-center">
+                <XCircle className="h-5 w-5 mr-2" />
+                {error}
+              </div>
+            )}
+
             {/* Empty State Cards (Observer Pattern Placeholder) */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-fade-in delay-300">
-              <div className="glass-card p-6 flex flex-col items-center justify-center text-center h-48 opacity-50">
-                <BrainCircuit className="h-8 w-8 text-muted-foreground mb-3" />
+              <div className={`glass-card p-6 flex flex-col items-center justify-center text-center ${evaluation ? 'border-primary ring-1 ring-primary' : 'opacity-50 h-48'}`}>
+                <BrainCircuit className={`h-8 w-8 mb-3 ${evaluation ? 'text-primary' : 'text-muted-foreground'}`} />
                 <h3 className="font-semibold mb-1">Strategic Vetting</h3>
-                <p className="text-sm text-muted-foreground">Waiting for URL input...</p>
+                {evaluation ? (
+                  <div className="text-sm mt-2 animate-fade-in w-full">
+                    <div className="text-4xl font-bold text-primary my-2">{evaluation.fitScore}%</div>
+                    <p className="text-foreground font-medium mb-1 truncate" title={evaluation.jobTitle}>{evaluation.jobTitle}</p>
+                    {evaluation.company && <p className="text-muted-foreground text-xs mb-2">{evaluation.company}</p>}
+                    <p className="text-xs text-muted-foreground text-left bg-background p-2 rounded border border-border mt-3 line-clamp-3">
+                      {evaluation.reasoning}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Waiting for URL input...</p>
+                )}
               </div>
-              <div className="glass-card p-6 flex flex-col items-center justify-center text-center h-48 opacity-50">
-                <Users className="h-8 w-8 text-muted-foreground mb-3" />
-                <h3 className="font-semibold mb-1">Client Dossier</h3>
-                <p className="text-sm text-muted-foreground">Waiting for vetting completion...</p>
+              
+              <div className={`glass-card p-6 flex flex-col items-center justify-center text-center ${evaluation?.decisionMaker ? 'border-accent ring-1 ring-accent' : 'opacity-50 h-48'}`}>
+                <Users className={`h-8 w-8 mb-3 ${evaluation?.decisionMaker ? 'text-accent' : 'text-muted-foreground'}`} />
+                <h3 className="font-semibold mb-1">Decision Maker</h3>
+                {evaluation?.decisionMaker ? (
+                  <div className="text-sm mt-2 animate-fade-in w-full text-center">
+                    <div className="w-16 h-16 rounded-full bg-accent/20 flex items-center justify-center text-accent mx-auto mb-3">
+                      <span className="text-xl font-bold">{evaluation.decisionMaker.name.charAt(0)}</span>
+                    </div>
+                    <p className="text-foreground font-medium text-lg">{evaluation.decisionMaker.name}</p>
+                    <p className="text-accent text-xs font-semibold uppercase tracking-wider mt-1">{evaluation.decisionMaker.role}</p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Waiting for vetting completion...</p>
+                )}
               </div>
+              
               <div className="glass-card p-6 flex flex-col items-center justify-center text-center h-48 opacity-50">
                 <FileText className="h-8 w-8 text-muted-foreground mb-3" />
                 <h3 className="font-semibold mb-1">Proposal & Pitch</h3>
