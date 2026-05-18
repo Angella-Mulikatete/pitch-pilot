@@ -11,7 +11,7 @@ export function getAIModel() {
       apiKey: process.env.GEMINI_API_KEY,
       baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
     });
-    return gemini("gemini-1.5-flash");
+    return (gemini as any)("gemini-1.5-flash", { structuredOutputs: false });
   }
 
   // 2. Groq Free-Tier Llama 3 (OpenAI Compatible Endpoint)
@@ -20,7 +20,7 @@ export function getAIModel() {
       apiKey: process.env.GROQ_API_KEY,
       baseURL: "https://api.groq.com/openai/v1",
     });
-    return groq("llama-3.1-70b-versatile");
+    return (groq as any)("llama-3.3-70b-versatile", { structuredOutputs: false });
   }
 
   // 3. Fallback to standard OpenAI
