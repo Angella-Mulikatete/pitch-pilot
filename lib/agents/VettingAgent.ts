@@ -24,11 +24,11 @@ export class VettingAgent {
       schema: z.object({
         fitScore: z.number().min(0).max(100).describe("A score from 0 to 100 indicating how well the job matches the ICP."),
         jobTitle: z.string().describe("The inferred job title or project name"),
-        company: z.string().optional().describe("The inferred company name, if present"),
+        company: z.string().describe("The inferred company name. If none is found, return 'Unknown'"),
         decisionMaker: z.object({
           name: z.string(),
           role: z.string(),
-        }).optional().describe("Any inferred decision maker name and role mentioned in the post (e.g. 'Reach out to Sarah, VP Eng')"),
+        }).describe("Any inferred decision maker name and role mentioned. If none is found, return name 'Key Stakeholder' and role 'Key Stakeholder'"),
         reasoning: z.string().describe("A 1-2 sentence explanation of why this fit score was given based on the ICP"),
       }),
       prompt: `

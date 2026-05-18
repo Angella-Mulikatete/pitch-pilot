@@ -868,7 +868,7 @@ export default function Dashboard() {
           <div className="text-right text-xs text-muted-foreground">
             <p>studios@pitchpilot.com</p>
             <p>www.pitchpilot.com</p>
-            <p>{new Date().toLocaleDateString()}</p>
+            <p>{activeLead ? new Date(activeLead._creationTime).toLocaleDateString() : ""}</p>
           </div>
         </div>
 
