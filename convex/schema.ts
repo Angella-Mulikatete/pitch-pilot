@@ -15,6 +15,9 @@ export default defineSchema({
     url: v.string(),
     jobTitle: v.optional(v.string()),
     company: v.optional(v.string()),
+    description: v.optional(v.string()),
+    location: v.optional(v.string()),
+    source: v.optional(v.string()),
     status: v.union(
       v.literal("VETTING"),
       v.literal("DOSSIER"),
@@ -32,6 +35,17 @@ export default defineSchema({
     clientDossier: v.optional(v.string()),
     proposalPdfUrl: v.optional(v.string()),
     emailDraft: v.optional(v.string()),
+  }),
+
+  proposals: defineTable({
+    title: v.string(),
+    clientName: v.string(),
+    techStack: v.array(v.string()),
+    content: v.string(), // The full markdown proposal text
+    embedding: v.array(v.float64()),
+  }).vectorIndex("by_embedding", {
+    vectorField: "embedding",
+    dimensions: 1536,
   }),
 
   audit_logs: defineTable({

@@ -1,7 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { startVettingProcess } from "./actions/pitchActions";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
+import { 
+  startVettingProcess, 
+  discoverJobsAction, 
+  seedPastProposalsAction 
+} from "./actions/pitchActions";
 import { 
   Briefcase, 
   LayoutDashboard, 
@@ -13,27 +20,56 @@ import {
   Search,
   Bell,
   CheckCircle,
-  XCircle
+  XCircle,
+  Sparkles,
+  MapPin,
+  TrendingUp,
+  AlertTriangle,
+  HelpCircle,
+  Database,
+  RefreshCw,
+  Zap,
+  Maximize2
 } from "lucide-react";
 
 export default function Dashboard() {
   const [jobUrl, setJobUrl] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
-  const [evaluation, setEvaluation] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  
+  // Job Discovery States
+  const [isDiscovering, setIsDiscovering] = useState(false);
+  const [discoverQuery, setDiscoverQuery] = useState("React Developer freelance");
+  const [discoverLocation, setDiscoverLocation] = useState("Remote");
+  const [discoverySuccess, setDiscoverySuccess] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Database Seeding State
+  const [isSeeding, setIsSeeding] = useState(false);
+  const [seedSuccess, setSeedSuccess] = useState(false);
+
+  // Selected state for active lead
+  const [selectedLeadId, setSelectedLeadId] = useState<Id<"leads"> | null>(null);
+  const [activeTab, setActiveTab] = useState<"dashboard" | "pitches">("dashboard");
+
+  // Real-time leads subscription
+  const leads = useQuery(api.leads.getLeads) || [];
+  
+  // Find current selected lead
+  const activeLead = leads.find((l: any) => l._id === selectedLeadId) || leads[0];
+
+  const handleIntakeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!jobUrl) return;
     
     setIsProcessing(true);
-    setEvaluation(null);
     setError(null);
     
     try {
       const result = await startVettingProcess(jobUrl);
-      if (result.success) {
-        setEvaluation(result.evaluation);
+      if (result.success && result.leadId) {
+        setSelectedLeadId(result.leadId);
+        setJobUrl("");
+        setActiveTab("pitches");
       } else {
         setError(result.error || "Failed to process lead");
       }
@@ -44,39 +80,104 @@ export default function Dashboard() {
     }
   };
 
+  const handleDiscoverJobs = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsDiscovering(true);
+    setDiscoverySuccess(false);
+    setError(null);
+
+    try {
+      const result = await discoverJobsAction(discoverQuery, discoverLocation);
+      if (result.success && result.leads && result.leads.length > 0) {
+        setDiscoverySuccess(true);
+        setSelectedLeadId(result.leads[0].id);
+        setActiveTab("pitches");
+      } else {
+        setError(result.error || "Failed to discover jobs");
+      }
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setIsDiscovering(false);
+    }
+  };
+
+  const handleSeedDatabase = async () => {
+    setIsSeeding(true);
+    setSeedSuccess(false);
+    try {
+      const res = await seedPastProposalsAction();
+      if (res.success) {
+        setSeedSuccess(true);
+        setTimeout(() => setSeedSuccess(false), 3000);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSeeding(false);
+    }
+  };
+
+  // Helper to parse stringified dossier
+  const getParsedDossier = (dossierStr?: string) => {
+    if (!dossierStr) return null;
+    try {
+      return JSON.parse(dossierStr);
+    } catch (e) {
+      return null;
+    }
+  };
+
+  const activeDossier = activeLead ? getParsedDossier(activeLead.clientDossier) : null;
+
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Sidebar */}
       <aside className="w-64 border-r border-border glass-panel flex flex-col justify-between hidden md:flex m-4 mr-0 z-10 animate-fade-in">
         <div>
           <div className="h-16 flex items-center px-6 border-b border-border">
-            <BrainCircuit className="h-8 w-8 text-primary mr-3" />
-            <span className="font-bold text-xl tracking-tight">PitchPilot</span>
+            <BrainCircuit className="h-8 w-8 text-primary mr-3 animate-pulse" />
+            <span className="font-bold text-xl tracking-tight bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">PitchPilot</span>
           </div>
           <nav className="p-4 space-y-2 mt-4">
-            <a href="#" className="flex items-center px-4 py-3 bg-primary/10 text-primary rounded-lg font-medium transition-colors">
+            <button 
+              onClick={() => setActiveTab("dashboard")} 
+              className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-all ${activeTab === "dashboard" ? "bg-primary/10 text-primary shadow-inner" : "text-muted-foreground hover:bg-muted/50"}`}
+            >
               <LayoutDashboard className="h-5 w-5 mr-3" />
               Dashboard
-            </a>
-            <a href="#" className="flex items-center px-4 py-3 text-muted-foreground hover:bg-muted/50 rounded-lg font-medium transition-colors">
+            </button>
+            <button 
+              onClick={() => setActiveTab("pitches")} 
+              className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-all ${activeTab === "pitches" ? "bg-primary/10 text-primary shadow-inner" : "text-muted-foreground hover:bg-muted/50"}`}
+            >
               <Briefcase className="h-5 w-5 mr-3" />
               Active Pitches
-            </a>
-            <a href="#" className="flex items-center px-4 py-3 text-muted-foreground hover:bg-muted/50 rounded-lg font-medium transition-colors">
-              <Users className="h-5 w-5 mr-3" />
-              Client Dossiers
-            </a>
-            <a href="#" className="flex items-center px-4 py-3 text-muted-foreground hover:bg-muted/50 rounded-lg font-medium transition-colors">
-              <FileText className="h-5 w-5 mr-3" />
-              Proposals
-            </a>
+              {leads.length > 0 && (
+                <span className="ml-auto bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full font-bold">
+                  {leads.length}
+                </span>
+              )}
+            </button>
           </nav>
         </div>
-        <div className="p-4">
-          <a href="#" className="flex items-center px-4 py-3 text-muted-foreground hover:bg-muted/50 rounded-lg font-medium transition-colors">
-            <Settings className="h-5 w-5 mr-3" />
-            Settings
-          </a>
+
+        {/* Sidebar Seeder Control */}
+        <div className="p-4 border-t border-border/50">
+          <button 
+            onClick={handleSeedDatabase}
+            disabled={isSeeding}
+            className="w-full flex items-center justify-center py-2.5 px-4 text-xs font-semibold rounded-lg bg-muted hover:bg-muted/80 text-foreground transition-all gap-2 disabled:opacity-50"
+          >
+            {isSeeding ? (
+              <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+            ) : seedSuccess ? (
+              <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+            ) : (
+              <Database className="h-3.5 w-3.5 text-primary" />
+            )}
+            {seedSuccess ? "Vector DB Seeded!" : "Seed RAG Database"}
+          </button>
         </div>
       </aside>
 
@@ -84,121 +185,348 @@ export default function Dashboard() {
       <main className="flex-1 flex flex-col overflow-hidden m-4 z-10">
         {/* Header */}
         <header className="h-16 glass-panel mb-4 flex items-center justify-between px-6 animate-fade-in delay-100">
-          <div className="flex items-center text-sm text-muted-foreground">
-            <span>Overview</span>
-            <span className="mx-2">/</span>
-            <span className="text-foreground font-medium">New Pitch</span>
+          <div className="flex items-center text-sm text-muted-foreground gap-2">
+            <span>BDR Agent Suite</span>
+            <span>/</span>
+            <span className="text-foreground font-medium uppercase tracking-wider text-xs">
+              {activeTab}
+            </span>
           </div>
           <div className="flex items-center space-x-4">
-            <button className="text-muted-foreground hover:text-foreground transition-colors">
-              <Search className="h-5 w-5" />
-            </button>
-            <button className="text-muted-foreground hover:text-foreground transition-colors relative">
-              <Bell className="h-5 w-5" />
-              <span className="absolute top-0 right-0 w-2 h-2 bg-primary rounded-full"></span>
-            </button>
-            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-accent flex items-center justify-center text-white font-bold text-xs shadow-lg">
-              ME
+            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-accent flex items-center justify-center text-white font-bold text-xs shadow-lg shadow-primary/20">
+              BDR
             </div>
           </div>
         </header>
 
-        {/* Content Scrollable Area */}
+        {/* Scrollable Content Area */}
         <div className="flex-1 overflow-auto rounded-lg animate-fade-in delay-200">
-          <div className="max-w-4xl mx-auto py-8">
-            <div className="text-center mb-10">
-              <h1 className="text-4xl font-extrabold tracking-tight mb-3">Deploy Your Digital BDR</h1>
-              <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-                Paste a job posting URL or brief below. PitchPilot will vet the lead, find the decision-maker, and draft a hyper-personalized proposal.
-              </p>
-            </div>
+          
+          {/* TAB 1: DASHBOARD & DISCOVERY */}
+          {activeTab === "dashboard" && (
+            <div className="max-w-4xl mx-auto py-8 px-4">
+              <div className="text-center mb-10">
+                <h1 className="text-4xl font-extrabold tracking-tight mb-3">
+                  Deploy Your <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">Autonomous BDR</span>
+                </h1>
+                <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+                  PitchPilot automatically discovers high-intent gigs via SerpAPI, vets lead compatibility, maps decision-makers, and leverages vector RAG to craft personalized campaigns.
+                </p>
+              </div>
 
-            {/* Intake Form */}
-            <form onSubmit={handleSubmit} className="glass-card p-6 mb-8 flex flex-col sm:flex-row gap-4 items-center">
-              <div className="relative flex-1 w-full">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Briefcase className="h-5 w-5 text-muted-foreground" />
+              {/* SerpAPI Discovery Form */}
+              <div className="glass-card p-6 mb-8 border border-primary/20 relative overflow-hidden shadow-2xl">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-primary/10 rounded-full blur-2xl"></div>
+                <div className="flex items-center gap-2 mb-4">
+                  <Sparkles className="h-5 w-5 text-primary" />
+                  <h3 className="font-bold text-lg">Intelligent SerpAPI Job Discovery</h3>
                 </div>
-                <input
-                  type="url"
-                  placeholder="https://www.upwork.com/jobs/..."
-                  className="w-full bg-background border border-border rounded-lg py-4 pl-12 pr-4 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-inner"
-                  value={jobUrl}
-                  onChange={(e) => setJobUrl(e.target.value)}
-                  required
-                />
+                <form onSubmit={handleDiscoverJobs} className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs text-muted-foreground font-semibold uppercase">Search query</label>
+                    <div className="relative">
+                      <Briefcase className="absolute left-3 top-3.5 h-4.5 w-4.5 text-muted-foreground" />
+                      <input 
+                        type="text" 
+                        value={discoverQuery}
+                        onChange={(e) => setDiscoverQuery(e.target.value)}
+                        className="w-full bg-background border border-border rounded-lg py-2.5 pl-10 pr-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                        required
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs text-muted-foreground font-semibold uppercase">Location</label>
+                    <div className="relative">
+                      <MapPin className="absolute left-3 top-3.5 h-4.5 w-4.5 text-muted-foreground" />
+                      <input 
+                        type="text" 
+                        value={discoverLocation}
+                        onChange={(e) => setDiscoverLocation(e.target.value)}
+                        className="w-full bg-background border border-border rounded-lg py-2.5 pl-10 pr-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <button 
+                    type="submit"
+                    disabled={isDiscovering}
+                    className="bg-primary hover:bg-primary/95 text-white font-bold py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50 shadow-md shadow-primary/20"
+                  >
+                    {isDiscovering ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                        Searching...
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="h-4 w-4 text-accent" />
+                        Discover Hot Leads
+                      </>
+                    )}
+                  </button>
+                </form>
               </div>
-              <button 
-                type="submit" 
-                disabled={isProcessing}
-                className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-4 px-8 rounded-lg transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_15px_rgba(109,40,217,0.5)] hover:shadow-[0_0_25px_rgba(109,40,217,0.7)]"
-              >
-                {isProcessing ? (
-                  <span className="flex items-center">
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Analyzing...
-                  </span>
+
+              {/* Splitter Text */}
+              <div className="flex items-center my-6">
+                <div className="flex-1 border-t border-border/50"></div>
+                <span className="mx-4 text-xs font-semibold text-muted-foreground uppercase tracking-widest">Or Manual Intake</span>
+                <div className="flex-1 border-t border-border/50"></div>
+              </div>
+
+              {/* Intake Form */}
+              <form onSubmit={handleIntakeSubmit} className="glass-card p-6 mb-8 flex flex-col sm:flex-row gap-4 items-center">
+                <div className="relative flex-1 w-full">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <Briefcase className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <input
+                    type="url"
+                    placeholder="https://www.upwork.com/jobs/..."
+                    className="w-full bg-background border border-border rounded-lg py-4 pl-12 pr-4 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-inner"
+                    value={jobUrl}
+                    onChange={(e) => setJobUrl(e.target.value)}
+                    required
+                  />
+                </div>
+                <button 
+                  type="submit" 
+                  disabled={isProcessing}
+                  className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-4 px-8 rounded-lg transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_15px_rgba(109,40,217,0.5)]"
+                >
+                  {isProcessing ? (
+                    <span className="flex items-center">
+                      <RefreshCw className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" />
+                      Analyzing...
+                    </span>
+                  ) : (
+                    <>
+                      <Send className="h-5 w-5 mr-2" />
+                      Vet Lead
+                    </>
+                  )}
+                </button>
+              </form>
+
+              {error && (
+                <div className="bg-red-500/10 border border-red-500/50 text-red-500 p-4 rounded-lg mb-8 flex items-center">
+                  <XCircle className="h-5 w-5 mr-2" />
+                  {error}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 2: ACTIVE PITCHES & DOSSIERS */}
+          {activeTab === "pitches" && (
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-full p-4">
+              
+              {/* Lead Sidebar List */}
+              <div className="lg:col-span-1 glass-card p-4 overflow-auto max-h-[calc(100vh-140px)] flex flex-col gap-3">
+                <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wider mb-2">Pitches List</h3>
+                {leads.length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic">No leads created yet.</p>
                 ) : (
-                  <>
-                    <Send className="h-5 w-5 mr-2" />
-                    Vet Lead
-                  </>
+                  leads.map((l: any) => (
+                    <button
+                      key={l._id}
+                      onClick={() => setSelectedLeadId(l._id)}
+                      className={`w-full text-left p-3 rounded-lg border transition-all flex flex-col gap-1 ${
+                        activeLead?._id === l._id 
+                          ? 'bg-primary/10 border-primary shadow-sm' 
+                          : 'bg-background hover:bg-muted/40 border-border'
+                      }`}
+                    >
+                      <span className="text-xs font-bold text-foreground line-clamp-1">{l.jobTitle || "Job Lead"}</span>
+                      <span className="text-[10px] text-muted-foreground font-semibold">{l.company || "Unknown Company"}</span>
+                      <div className="flex items-center gap-2 mt-2">
+                        {l.fitScore !== undefined && (
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
+                            l.fitScore >= 70 ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
+                          }`}>
+                            {l.fitScore}% Fit
+                          </span>
+                        )}
+                        <span className="text-[9px] bg-muted px-1.5 py-0.5 rounded uppercase tracking-wider text-muted-foreground ml-auto font-bold">
+                          {l.status}
+                        </span>
+                      </div>
+                    </button>
+                  ))
                 )}
-              </button>
-            </form>
-
-            {error && (
-              <div className="bg-red-500/10 border border-red-500/50 text-red-500 p-4 rounded-lg mb-8 animate-fade-in flex items-center">
-                <XCircle className="h-5 w-5 mr-2" />
-                {error}
               </div>
-            )}
 
-            {/* Empty State Cards (Observer Pattern Placeholder) */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-fade-in delay-300">
-              <div className={`glass-card p-6 flex flex-col items-center justify-center text-center ${evaluation ? 'border-primary ring-1 ring-primary' : 'opacity-50 h-48'}`}>
-                <BrainCircuit className={`h-8 w-8 mb-3 ${evaluation ? 'text-primary' : 'text-muted-foreground'}`} />
-                <h3 className="font-semibold mb-1">Strategic Vetting</h3>
-                {evaluation ? (
-                  <div className="text-sm mt-2 animate-fade-in w-full">
-                    <div className="text-4xl font-bold text-primary my-2">{evaluation.fitScore}%</div>
-                    <p className="text-foreground font-medium mb-1 truncate" title={evaluation.jobTitle}>{evaluation.jobTitle}</p>
-                    {evaluation.company && <p className="text-muted-foreground text-xs mb-2">{evaluation.company}</p>}
-                    <p className="text-xs text-muted-foreground text-left bg-background p-2 rounded border border-border mt-3 line-clamp-3">
-                      {evaluation.reasoning}
+              {/* Main Lead Detailed View */}
+              <div className="lg:col-span-3 overflow-auto max-h-[calc(100vh-140px)] pr-2 flex flex-col gap-6">
+                
+                {activeLead ? (
+                  <>
+                    {/* Top Row: Basic Info & Fit Score Card */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      
+                      {/* Fit Score Strategic Card */}
+                      <div className="glass-card p-6 border-l-4 border-l-primary flex flex-col justify-between">
+                        <div>
+                          <h4 className="text-xs text-muted-foreground uppercase font-bold tracking-wider mb-1">Strategic Vetting</h4>
+                          <h2 className="font-extrabold text-2xl truncate" title={activeLead.jobTitle}>{activeLead.jobTitle || "Pending Vetting"}</h2>
+                          <p className="text-sm text-primary font-semibold">{activeLead.company || "Evaluating..."}</p>
+                        </div>
+                        <div className="mt-4 flex items-baseline gap-2">
+                          <span className="text-5xl font-black bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                            {activeLead.fitScore ?? "--"}%
+                          </span>
+                          <span className="text-xs text-muted-foreground font-bold">Fit Score</span>
+                        </div>
+                      </div>
+
+                      {/* Decision Maker Card */}
+                      <div className="glass-card p-6 border-l-4 border-l-accent flex flex-col justify-between">
+                        <div>
+                          <h4 className="text-xs text-muted-foreground uppercase font-bold tracking-wider mb-2">Mapped Decision Maker</h4>
+                          {activeLead.decisionMaker ? (
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center font-bold text-accent">
+                                {activeLead.decisionMaker.name.charAt(0)}
+                              </div>
+                              <div>
+                                <p className="font-bold text-foreground text-sm leading-tight">{activeLead.decisionMaker.name}</p>
+                                <p className="text-xs text-muted-foreground">{activeLead.decisionMaker.role}</p>
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="text-xs text-muted-foreground italic">No specific stakeholder detected.</p>
+                          )}
+                        </div>
+                        {activeLead.decisionMaker?.linkedIn && (
+                          <a 
+                            href={activeLead.decisionMaker.linkedIn}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs font-bold text-accent hover:underline flex items-center mt-3"
+                          >
+                            LinkedIn Profile →
+                          </a>
+                        )}
+                      </div>
+
+                      {/* Pitch Status Card */}
+                      <div className="glass-card p-6 border-l-4 border-l-muted flex flex-col justify-between">
+                        <div>
+                          <h4 className="text-xs text-muted-foreground uppercase font-bold tracking-wider mb-1">Workflow Status</h4>
+                          <span className="inline-block mt-2 bg-muted px-2.5 py-1 rounded text-xs uppercase tracking-wider text-muted-foreground font-extrabold">
+                            {activeLead.status}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground italic mt-4">
+                          Job scraped via: {activeLead.source || "manual"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Lead Job Description */}
+                    {activeLead.description && (
+                      <div className="glass-card p-6">
+                        <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wider mb-3">Job Description</h3>
+                        <p className="text-xs text-foreground leading-relaxed whitespace-pre-line line-clamp-4 hover:line-clamp-none transition-all cursor-pointer">
+                          {activeLead.description}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Day 3 RAG Client Dossier Generation */}
+                    <div className="glass-card p-6 border border-primary/20 relative">
+                      <div className="absolute top-4 right-4 flex items-center gap-1.5 text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded font-bold uppercase tracking-wider">
+                        <Database className="h-3 w-3" />
+                        Vector Search Enabled
+                      </div>
+                      <h3 className="font-extrabold text-lg flex items-center gap-2 mb-4 text-foreground">
+                        <BrainCircuit className="h-5 w-5 text-primary" />
+                        Synthesized RAG Client Dossier
+                      </h3>
+
+                      {activeDossier ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in">
+                          
+                          {/* Left Column: Pain Points & Research */}
+                          <div className="flex flex-col gap-4">
+                            <div>
+                              <h4 className="text-xs font-bold uppercase text-muted-foreground mb-2 flex items-center gap-1">
+                                <TrendingUp className="h-3.5 w-3.5 text-primary" />
+                                Core Business Pain Points
+                              </h4>
+                              <ul className="space-y-1.5">
+                                {activeDossier.inferredPainPoints?.map((pain: string, idx: number) => (
+                                  <li key={idx} className="text-xs text-foreground bg-background border border-border p-2 rounded flex items-start gap-2">
+                                    <span className="text-primary font-bold">{idx + 1}.</span>
+                                    {pain}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                            <div>
+                              <h4 className="text-xs font-bold uppercase text-muted-foreground mb-1.5 flex items-center gap-1">
+                                <Sparkles className="h-3.5 w-3.5 text-accent" />
+                                Company Research Insights
+                              </h4>
+                              <p className="text-xs text-muted-foreground bg-background border border-border p-3 rounded leading-relaxed">
+                                {activeDossier.companyInsights}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Right Column: Strategic Approach & Red Flags */}
+                          <div className="flex flex-col gap-4">
+                            <div>
+                              <h4 className="text-xs font-bold uppercase text-muted-foreground mb-2 flex items-center gap-1">
+                                <Zap className="h-3.5 w-3.5 text-primary animate-pulse" />
+                                Custom RAG Strategic Approach
+                              </h4>
+                              <div className="text-xs text-foreground bg-primary/5 border border-primary/20 p-4 rounded leading-relaxed whitespace-pre-line">
+                                {activeDossier.strategicApproach}
+                              </div>
+                            </div>
+                            {activeDossier.potentialRedFlags && activeDossier.potentialRedFlags.length > 0 && (
+                              <div>
+                                <h4 className="text-xs font-bold uppercase text-muted-foreground mb-2 flex items-center gap-1">
+                                  <AlertTriangle className="h-3.5 w-3.5 text-yellow-500" />
+                                  Potential Engagement Risks
+                                </h4>
+                                <ul className="space-y-1">
+                                  {activeDossier.potentialRedFlags.map((risk: string, idx: number) => (
+                                    <li key={idx} className="text-xs text-yellow-200/90 bg-yellow-500/10 border border-yellow-500/20 p-2 rounded flex items-center gap-2">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-yellow-500"></span>
+                                      {risk}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center py-10 text-center opacity-70">
+                          <RefreshCw className="h-8 w-8 text-muted-foreground animate-spin mb-3" />
+                          <p className="text-sm font-semibold text-muted-foreground">Synthesizing Dossier...</p>
+                          <p className="text-xs text-muted-foreground mt-1 max-w-sm">Generating vector embedding and matching with successful past proposals from the DB.</p>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-20 text-center glass-card">
+                    <Briefcase className="h-12 w-12 text-muted-foreground opacity-40 mb-3" />
+                    <h3 className="font-bold text-lg text-foreground">Select a Pitch</h3>
+                    <p className="text-sm text-muted-foreground mt-1 max-w-xs">
+                      Choose a lead from the sidebar or discover new jobs in the Dashboard tab to view details.
                     </p>
                   </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">Waiting for URL input...</p>
                 )}
-              </div>
-              
-              <div className={`glass-card p-6 flex flex-col items-center justify-center text-center ${evaluation?.decisionMaker ? 'border-accent ring-1 ring-accent' : 'opacity-50 h-48'}`}>
-                <Users className={`h-8 w-8 mb-3 ${evaluation?.decisionMaker ? 'text-accent' : 'text-muted-foreground'}`} />
-                <h3 className="font-semibold mb-1">Decision Maker</h3>
-                {evaluation?.decisionMaker ? (
-                  <div className="text-sm mt-2 animate-fade-in w-full text-center">
-                    <div className="w-16 h-16 rounded-full bg-accent/20 flex items-center justify-center text-accent mx-auto mb-3">
-                      <span className="text-xl font-bold">{evaluation.decisionMaker.name.charAt(0)}</span>
-                    </div>
-                    <p className="text-foreground font-medium text-lg">{evaluation.decisionMaker.name}</p>
-                    <p className="text-accent text-xs font-semibold uppercase tracking-wider mt-1">{evaluation.decisionMaker.role}</p>
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">Waiting for vetting completion...</p>
-                )}
-              </div>
-              
-              <div className="glass-card p-6 flex flex-col items-center justify-center text-center h-48 opacity-50">
-                <FileText className="h-8 w-8 text-muted-foreground mb-3" />
-                <h3 className="font-semibold mb-1">Proposal & Pitch</h3>
-                <p className="text-sm text-muted-foreground">Waiting for dossier insights...</p>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </main>
     </div>

@@ -16,11 +16,28 @@ export const getLeads = query({
 });
 
 export const createLead = mutation({
-  args: { url: v.string() },
+  args: {
+    url: v.string(),
+    jobTitle: v.optional(v.string()),
+    company: v.optional(v.string()),
+    description: v.optional(v.string()),
+    location: v.optional(v.string()),
+    source: v.optional(v.string()),
+    status: v.optional(
+      v.union(
+        v.literal("VETTING"),
+        v.literal("DOSSIER"),
+        v.literal("PROPOSAL"),
+        v.literal("READY")
+      )
+    ),
+  },
   handler: async (ctx, args) => {
+    const { url, status, ...rest } = args;
     return await ctx.db.insert("leads", {
-      url: args.url,
-      status: "VETTING",
+      url,
+      status: status ?? "VETTING",
+      ...rest,
     });
   },
 });
@@ -57,6 +74,19 @@ export const updateLeadDetails = mutation({
   handler: async (ctx, args) => {
     const { id, ...details } = args;
     await ctx.db.patch(id, details);
+  },
+});
+
+export const updateLeadDossier = mutation({
+  args: {
+    id: v.id("leads"),
+    clientDossier: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.id, {
+      clientDossier: args.clientDossier,
+      status: "PROPOSAL",
+    });
   },
 });
 
