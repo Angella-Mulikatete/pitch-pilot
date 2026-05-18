@@ -20,7 +20,7 @@ export function getAIModel() {
       apiKey: process.env.GROQ_API_KEY,
       baseURL: "https://api.groq.com/openai/v1",
     });
-    return groq("llama-3.3-70b-versatile");
+    return groq("llama-3.1-70b-versatile");
   }
 
   // 3. Fallback to standard OpenAI
