@@ -1,7 +1,18 @@
-import { generateObject } from "ai";
+import { generateText, Output } from "ai";
 import { getAIModel } from "../ai";
 import { ToolFactory } from "../tools/ToolFactory";
 import { z } from "zod";
+
+const vettingSchema = z.object({
+  fitScore: z.number().min(0).max(100),
+  jobTitle: z.string(),
+  company: z.string(),
+  decisionMaker: z.object({
+    name: z.string(),
+    role: z.string(),
+  }),
+  reasoning: z.string(),
+});
 
 export class VettingAgent {
   /**
@@ -19,18 +30,9 @@ export class VettingAgent {
     const content = await ToolFactory.scrapeWebpage(url);
 
     // 2. Evaluate against ICP
-    const { object } = await generateObject({
+    const { output } = await generateText({
       model: getAIModel(),
-      schema: z.object({
-        fitScore: z.number().min(0).max(100).describe("A score from 0 to 100 indicating how well the job matches the ICP."),
-        jobTitle: z.string().describe("The inferred job title or project name"),
-        company: z.string().describe("The inferred company name. If none is found, return 'Unknown'"),
-        decisionMaker: z.object({
-          name: z.string(),
-          role: z.string(),
-        }).describe("Any inferred decision maker name and role mentioned. If none is found, return name 'Key Stakeholder' and role 'Key Stakeholder'"),
-        reasoning: z.string().describe("A 1-2 sentence explanation of why this fit score was given based on the ICP"),
-      }),
+      output: Output.json(),
       prompt: `
         You are an expert Business Development Representative (BDR).
         Your task is to evaluate a job posting and determine if it's a good fit for our agency.
@@ -46,9 +48,22 @@ export class VettingAgent {
         ---
         
         Provide a structured evaluation including a fit score, extracted job title, company, possible decision maker, and brief reasoning.
+        You MUST output the response as a JSON object matching this schema exactly:
+        {
+          "fitScore": number (A score from 0 to 100 indicating how well the job matches the ICP),
+          "jobTitle": string (The inferred job title or project name),
+          "company": string (The inferred company name. If none is found, return "Unknown"),
+          "decisionMaker": {
+            "name": string (Any inferred decision maker name mentioned. If none, return "Key Stakeholder"),
+            "role": string (Any inferred role. If none, return "Key Stakeholder")
+          },
+          "reasoning": string (A 1-2 sentence explanation of why this fit score was given based on the ICP)
+        }
       `,
     });
 
-    return object;
+    return vettingSchema.parse(output);
   }
 }
+
+

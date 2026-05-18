@@ -1,6 +1,17 @@
-import { generateObject } from "ai";
+import { generateText, Output } from "ai";
 import { getAIModel } from "../ai";
 import { z } from "zod";
+
+const proposalSchema = z.object({
+  proposalDraft: z.string(),
+  pricingTiers: z.array(
+    z.object({
+      name: z.string(),
+      price: z.string(),
+      scope: z.array(z.string()),
+    })
+  ).min(3).max(3),
+});
 
 export class ProposalAgent {
   /**
@@ -28,18 +39,9 @@ export class ProposalAgent {
       }
     }
 
-    const { object } = await generateObject({
+    const { output } = await generateText({
       model: getAIModel(),
-      schema: z.object({
-        proposalDraft: z.string().describe("A comprehensive, professional markdown-formatted sales proposal draft (executive summary, technical proposal, timelines, and credentials)"),
-        pricingTiers: z.array(
-          z.object({
-            name: z.string().describe("Tier name, e.g., 'Core MVP Integration', 'Full-Scale Platform', 'Premium Scale & Support'"),
-            price: z.string().describe("Price figure, e.g., '$4,800', '$9,500'"),
-            scope: z.array(z.string()).describe("3-5 detailed deliverables for this tier"),
-          })
-        ).min(3).max(3).describe("Exactly three tiered pricing options (Basic, Standard, Premium)"),
-      }),
+      output: Output.json(),
       prompt: `
         You are a principal Solutions Architect and veteran Sales Partner for a world-class software development agency.
         Your task is to write a highly compelling, custom proposal and structure a 3-tier pricing strategy for this active lead.
@@ -62,9 +64,32 @@ export class ProposalAgent {
            - Create exactly 3 tiers: Basic (MVP), Standard (Recommended), and Premium (Scale).
            - Base the estimated dollar amount logically on the job budget context. If no budget is inferred, use realistic agency numbers (e.g., $4k basic, $8k standard, $15k premium).
            - Specify distinct, comprehensive list of deliverables for each tier's scope.
+
+        You MUST output the response as a JSON object matching this schema exactly:
+        {
+          "proposalDraft": "A comprehensive, professional markdown-formatted sales proposal draft (executive summary, technical proposal, timelines, and credentials)",
+          "pricingTiers": [
+            {
+              "name": "Tier name, e.g., 'Core MVP Integration'",
+              "price": "Price figure, e.g., '$4,800'",
+              "scope": ["deliverable 1", "deliverable 2", "deliverable 3"]
+            },
+            {
+              "name": "Tier name, e.g., 'Full-Scale Platform'",
+              "price": "Price figure, e.g., '$9,500'",
+              "scope": ["deliverable 1", "deliverable 2", "deliverable 3"]
+            },
+            {
+              "name": "Tier name, e.g., 'Premium Scale & Support'",
+              "price": "Price figure, e.g., '$15,000'",
+              "scope": ["deliverable 1", "deliverable 2", "deliverable 3"]
+            }
+          ]
+        }
       `,
     });
 
-    return object;
+    return proposalSchema.parse(output);
   }
 }
+

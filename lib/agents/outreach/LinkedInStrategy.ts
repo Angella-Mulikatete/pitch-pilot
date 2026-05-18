@@ -1,16 +1,18 @@
-import { generateObject } from "ai";
+import { generateText, Output } from "ai";
 import { getAIModel } from "../../ai";
 import { z } from "zod";
 import { OutreachStrategy, OutreachStrategyContext } from "./OutreachStrategy";
 
+const linkedinSchema = z.object({
+  connectionRequest: z.string().max(290),
+  pitchHook: z.string(),
+});
+
 export class LinkedInStrategy implements OutreachStrategy {
   async generate(context: OutreachStrategyContext) {
-    const { object } = await generateObject({
+    const { output } = await generateText({
       model: getAIModel(),
-      schema: z.object({
-        connectionRequest: z.string().max(290).describe("A personalized LinkedIn connection request note. MUST BE STRICTLY UNDER 290 CHARACTERS including spaces."),
-        pitchHook: z.string().describe("A follow-up conversational pitch message once the connection is accepted. Keep it casual, direct, and under 100 words."),
-      }),
+      output: Output.json(),
       prompt: `
         You are an expert at B2B social selling on LinkedIn. Your job is to draft LinkedIn outreach touchpoints for this lead.
         
@@ -30,9 +32,16 @@ export class LinkedInStrategy implements OutreachStrategy {
            - Write a casual, short message (under 100 words) to send after connection acceptance.
            - Connect their business challenge directly to our custom approach.
            - Finish with a low-friction question (e.g., "Are you exploring external dev partners for this MVP?").
+
+        You MUST output the response as a JSON object matching this schema exactly:
+        {
+          "connectionRequest": "A personalized LinkedIn connection request note (STRICTLY UNDER 290 CHARACTERS including spaces)",
+          "pitchHook": "A follow-up conversational pitch message once the connection is accepted"
+        }
       `,
     });
 
-    return object;
+    return linkedinSchema.parse(output);
   }
 }
+

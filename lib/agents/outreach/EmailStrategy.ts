@@ -1,16 +1,18 @@
-import { generateObject } from "ai";
+import { generateText, Output } from "ai";
 import { getAIModel } from "../../ai";
 import { z } from "zod";
 import { OutreachStrategy, OutreachStrategyContext } from "./OutreachStrategy";
 
+const emailSchema = z.object({
+  subject: z.string(),
+  body: z.string(),
+});
+
 export class EmailStrategy implements OutreachStrategy {
   async generate(context: OutreachStrategyContext) {
-    const { object } = await generateObject({
+    const { output } = await generateText({
       model: getAIModel(),
-      schema: z.object({
-        subject: z.string().describe("A short, hyper-engaging email subject line (avoid spam words, keep it personal and curious)"),
-        body: z.string().describe("The email body text in plain text or with standard linebreaks. Use a professional, warm, value-driven, and brief tone."),
-      }),
+      output: Output.json(),
       prompt: `
         You are a world-class cold outreach copywriter. Your goal is to write a highly converting cold email to a prospective client.
         
@@ -34,9 +36,16 @@ export class EmailStrategy implements OutreachStrategy {
            - Briefly explain how our custom solution adds enormous value (mentioning standard MVP milestones or previous similar proposals from RAG).
            - End with a low-friction, single call to action (e.g. "Are you open to a 10-minute chat next week to see a live mockup?").
            - Sign off as "PitchPilot Studios team". Do not leave place-holders like "[Your Name]".
+
+        You MUST output the response as a JSON object matching this schema exactly:
+        {
+          "subject": "A short, hyper-engaging email subject line",
+          "body": "The email body text in plain text or with standard linebreaks"
+        }
       `,
     });
 
-    return object;
+    return emailSchema.parse(output);
   }
 }
+

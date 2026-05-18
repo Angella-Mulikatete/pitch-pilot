@@ -5,7 +5,7 @@ import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { embed } from "ai";
-import { openai } from "@ai-sdk/openai";
+import { getEmbeddingModel } from "@/lib/ai";
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
@@ -37,28 +37,19 @@ export async function startVettingProcess(url: string, description?: string) {
       decisionMaker: evaluation.decisionMaker,
     });
 
-    // 4. If fit score is high enough (>= 50), run the DossierAgent (RAG + Research)
-    let dossier = null;
-    if (evaluation.fitScore >= 50) {
-      const dossierAgent = AgentFactory.get("dossier") as any;
-      const dossierObj = await dossierAgent.execute({
-        jobTitle: evaluation.jobTitle,
-        company: evaluation.company,
-        description: description || evaluation.reasoning,
-        url,
-      });
-      dossier = dossierObj;
-      await convex.mutation(api.leads.updateLeadDossier, {
-        id: leadId,
-        clientDossier: JSON.stringify(dossierObj),
-      });
-    } else {
-      // Just advance status to DOSSIER anyway without rich dossier
-      await convex.mutation(api.leads.updateLeadStatus, {
-        id: leadId,
-        status: "DOSSIER",
-      });
-    }
+    // 4. Run the DossierAgent (RAG + Research) for all qualified and unqualified leads to guarantee an unbroken BDR pipeline experience in the UI
+    const dossierAgent = AgentFactory.get("dossier") as any;
+    const dossierObj = await dossierAgent.execute({
+      jobTitle: evaluation.jobTitle,
+      company: evaluation.company,
+      description: description || evaluation.reasoning,
+      url,
+    });
+    const dossier = dossierObj;
+    await convex.mutation(api.leads.updateLeadDossier, {
+      id: leadId,
+      clientDossier: JSON.stringify(dossierObj),
+    });
 
     return { success: true, leadId, evaluation, dossier };
   } catch (error) {
@@ -217,9 +208,15 @@ An elegant, HIPAA-compliant patient dashboard mobile application built with Reac
     ];
 
     for (const prop of proposals) {
-      // Generate embedding
+      // Generate embedding — skip seeding if no embedding provider is available
+      const embeddingModel = getEmbeddingModel();
+      if (!embeddingModel) {
+        console.warn("No embedding model available — cannot seed proposals without embeddings.");
+        return { success: false, error: "No embedding provider configured. Add an OPENAI_API_KEY with available quota to use RAG seeding." };
+      }
+
       const { embedding } = await embed({
-        model: openai.embedding("text-embedding-3-small"),
+        model: embeddingModel,
         value: `${prop.title} ${prop.techStack.join(" ")} ${prop.content}`,
       });
 
