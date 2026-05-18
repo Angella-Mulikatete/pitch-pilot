@@ -8,7 +8,8 @@ import {
   startVettingProcess, 
   discoverJobsAction, 
   seedPastProposalsAction,
-  generateProposalAction
+  generateProposalAction,
+  generateOutreachAction
 } from "./actions/pitchActions";
 import { 
   Briefcase, 
@@ -40,6 +41,8 @@ export default function Dashboard() {
   
   // Proposal Engine State
   const [isGeneratingProposal, setIsGeneratingProposal] = useState(false);
+  const [isGeneratingOutreach, setIsGeneratingOutreach] = useState(false);
+  const [outreachTab, setOutreachTab] = useState<"email" | "linkedin">("email");
   
   // Job Discovery States
   const [isDiscovering, setIsDiscovering] = useState(false);
@@ -134,6 +137,21 @@ export default function Dashboard() {
       setError(String(err));
     } finally {
       setIsGeneratingProposal(false);
+    }
+  };
+
+  const handleGenerateOutreach = async (leadId: Id<"leads">) => {
+    setIsGeneratingOutreach(true);
+    setError(null);
+    try {
+      const res = await generateOutreachAction(leadId);
+      if (!res.success) {
+        setError(res.error || "Failed to generate outreach campaigns");
+      }
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setIsGeneratingOutreach(false);
     }
   };
 
@@ -614,6 +632,125 @@ export default function Dashboard() {
                                 <>
                                   <Sparkles className="h-4 w-4 text-white" />
                                   Generate Bid Proposal & Tiers
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Day 5 Hyper-Personalized Outreach Room */}
+                    {activeLead.proposalDraft && (
+                      <div className="glass-card p-6 border border-primary/20 relative mt-6">
+                        <div className="absolute top-4 right-4 flex items-center gap-1.5 text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded font-bold uppercase tracking-wider">
+                          <Zap className="h-3 w-3" />
+                          Outreach Strategy Active
+                        </div>
+                        <h3 className="font-extrabold text-lg flex items-center gap-2 mb-4 text-foreground">
+                          <Send className="h-5 w-5 text-primary" />
+                          Hyper-Personalized Outreach Room
+                        </h3>
+
+                        {activeLead.emailDraftSubject ? (
+                          <div className="flex flex-col gap-6 animate-fade-in">
+                            
+                            {/* Tab controls */}
+                            <div className="flex border-b border-border/60">
+                              <button 
+                                onClick={() => setOutreachTab("email")}
+                                className={`pb-3 px-4 text-xs font-bold uppercase tracking-wider transition-all border-b-2 ${
+                                  outreachTab === "email" 
+                                    ? 'border-primary text-primary' 
+                                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                                }`}
+                              >
+                                Cold Email Campaign
+                              </button>
+                              <button 
+                                onClick={() => setOutreachTab("linkedin")}
+                                className={`pb-3 px-4 text-xs font-bold uppercase tracking-wider transition-all border-b-2 ${
+                                  outreachTab === "linkedin" 
+                                    ? 'border-primary text-primary' 
+                                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                                }`}
+                              >
+                                LinkedIn Touchpoints
+                              </button>
+                            </div>
+
+                            {/* TAB 1: COLD EMAIL TEMPLATE */}
+                            {outreachTab === "email" && (
+                              <div className="glass-card p-5 border border-border bg-background/50 flex flex-col gap-4 animate-fade-in">
+                                <div className="grid grid-cols-6 gap-2 text-xs border-b border-border/40 pb-3">
+                                  <span className="col-span-1 text-muted-foreground font-semibold">From:</span>
+                                  <span className="col-span-5 text-foreground font-bold">studios@pitchpilot.com (PitchPilot Studios)</span>
+                                  
+                                  <span className="col-span-1 text-muted-foreground font-semibold">To:</span>
+                                  <span className="col-span-5 text-foreground font-bold">
+                                    {activeLead.decisionMaker?.name ?? "Stakeholder"} 
+                                    {activeLead.decisionMaker?.role ? ` <${activeLead.decisionMaker.role}>` : ""}
+                                  </span>
+                                  
+                                  <span className="col-span-1 text-muted-foreground font-semibold">Subject:</span>
+                                  <span className="col-span-5 text-primary font-bold">{activeLead.emailDraftSubject}</span>
+                                </div>
+                                <div className="text-xs text-foreground leading-relaxed whitespace-pre-line font-sans select-text pt-2">
+                                  {activeLead.emailDraftBody}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* TAB 2: LINKEDIN CHAT INTERFACE */}
+                            {outreachTab === "linkedin" && (
+                              <div className="flex flex-col gap-4 animate-fade-in">
+                                
+                                {/* Connection Request bubble */}
+                                <div className="flex flex-col gap-1.5">
+                                  <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">1. Connection Request Note (Under 300 Chars)</span>
+                                  <div className="bg-muted p-4 rounded-lg rounded-tl-none max-w-lg border border-border/40 relative shadow-sm">
+                                    <p className="text-xs text-foreground leading-relaxed font-sans select-text">
+                                      "{activeLead.linkedInConnectionRequest}"
+                                    </p>
+                                    <span className="absolute bottom-1 right-2 text-[8px] text-muted-foreground font-bold">
+                                      {activeLead.linkedInConnectionRequest?.length} / 300 chars
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Pitch Hook message bubble */}
+                                <div className="flex flex-col gap-1.5 mt-2">
+                                  <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">2. Conversational Pitch Hook (After Acceptance)</span>
+                                  <div className="bg-primary/10 p-4 rounded-lg rounded-tl-none max-w-lg border border-primary/20 shadow-sm">
+                                    <p className="text-xs text-foreground leading-relaxed font-sans select-text">
+                                      {activeLead.linkedInPitchHook}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center justify-center py-12 text-center">
+                            <Send className="h-10 w-10 text-muted-foreground/60 mb-3" />
+                            <h4 className="font-bold text-sm text-foreground mb-1">Generate Personalized Campaigns</h4>
+                            <p className="text-xs text-muted-foreground max-w-md mb-6 leading-relaxed">
+                              Execute parallel outreach strategies (Strategy Design Pattern) to write hyper-converting cold emails and LinkedIn connect/pitch notes addressing your stakeholder's core needs.
+                            </p>
+                            <button
+                              onClick={() => handleGenerateOutreach(activeLead._id)}
+                              disabled={isGeneratingOutreach}
+                              className="bg-primary hover:bg-primary/90 text-white font-bold py-2.5 px-6 rounded-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50 shadow-md shadow-primary/20"
+                            >
+                              {isGeneratingOutreach ? (
+                                <>
+                                  <RefreshCw className="h-4 w-4 animate-spin" />
+                                  Orchestrating Strategies...
+                                </>
+                              ) : (
+                                <>
+                                  <Zap className="h-4 w-4 text-accent" />
+                                  Generate Outreach Campaigns
                                 </>
                               )}
                             </button>

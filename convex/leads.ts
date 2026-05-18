@@ -112,3 +112,17 @@ export const updateLeadProposal = mutation({
   },
 });
 
+export const updateLeadOutreach = mutation({
+  args: {
+    id: v.id("leads"),
+    emailDraftSubject: v.string(),
+    emailDraftBody: v.string(),
+    linkedInConnectionRequest: v.string(),
+    linkedInPitchHook: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const { id, ...outreach } = args;
+    await ctx.db.patch(id, outreach);
+  },
+});
+

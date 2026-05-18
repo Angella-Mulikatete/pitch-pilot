@@ -45,6 +45,10 @@ export default defineSchema({
       )
     ),
     emailDraft: v.optional(v.string()),
+    emailDraftSubject: v.optional(v.string()),
+    emailDraftBody: v.optional(v.string()),
+    linkedInConnectionRequest: v.optional(v.string()),
+    linkedInPitchHook: v.optional(v.string()),
   }),
 
   proposals: defineTable({

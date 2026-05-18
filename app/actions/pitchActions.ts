@@ -278,3 +278,43 @@ export async function generateProposalAction(leadId: Id<"leads">) {
     return { success: false, error: String(error) };
   }
 }
+
+/**
+ * Generates cold email outreach and LinkedIn touchpoints in parallel using the Strategy Pattern.
+ */
+export async function generateOutreachAction(leadId: Id<"leads">) {
+  try {
+    // 1. Fetch the lead
+    const lead = await convex.query(api.leads.getLead, { id: leadId });
+    if (!lead) {
+      throw new Error("Lead not found");
+    }
+
+    // 2. Fetch the outreach agent
+    const outreachAgent = AgentFactory.get("outreach") as any;
+
+    // 3. Execute outreach campaign strategies
+    const result = await outreachAgent.execute({
+      jobTitle: lead.jobTitle,
+      company: lead.company,
+      description: lead.description,
+      clientDossier: lead.clientDossier,
+      proposalDraft: lead.proposalDraft,
+      decisionMaker: lead.decisionMaker,
+    });
+
+    // 4. Save drafts back to Convex
+    await convex.mutation(api.leads.updateLeadOutreach, {
+      id: leadId,
+      emailDraftSubject: result.emailDraftSubject,
+      emailDraftBody: result.emailDraftBody,
+      linkedInConnectionRequest: result.linkedInConnectionRequest,
+      linkedInPitchHook: result.linkedInPitchHook,
+    });
+
+    return { success: true, ...result };
+  } catch (error) {
+    console.error("Outreach generation action failed:", error);
+    return { success: false, error: String(error) };
+  }
+}

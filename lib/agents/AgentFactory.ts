@@ -1,6 +1,7 @@
 import { VettingAgent } from "./VettingAgent";
 import { DossierAgent } from "./DossierAgent";
 import { ProposalAgent } from "./ProposalAgent";
+import { OutreachAgent } from "./OutreachAgent";
 
 export type AgentType = "vetting" | "dossier" | "proposal" | "outreach";
 
@@ -17,7 +18,7 @@ export class AgentFactory {
       case "proposal":
         return ProposalAgent;
       case "outreach":
-        throw new Error("OutreachAgent not yet implemented");
+        return OutreachAgent;
       default:
         throw new Error(`Unknown agent type: ${type}`);
     }
