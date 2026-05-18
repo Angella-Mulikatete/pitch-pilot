@@ -1,5 +1,6 @@
 import { generateObject, embed } from "ai";
 import { openai } from "@ai-sdk/openai";
+import { getAIModel } from "../ai";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/convex/_generated/api";
 import { z } from "zod";
@@ -42,7 +43,7 @@ export class DossierAgent {
 
     // 3. Prompt GPT-4o to synthesize the Job description, Company info, and Past proposals into a Client Dossier
     const { object } = await generateObject({
-      model: openai("gpt-4o"),
+      model: getAIModel(),
       schema: z.object({
         inferredPainPoints: z.array(z.string()).describe("3-5 highly strategic pain points the client is facing based on the job details"),
         companyInsights: z.string().describe("Synthesized research and recent activity about the company"),

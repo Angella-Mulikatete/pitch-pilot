@@ -1,12 +1,12 @@
 import { generateObject } from "ai";
-import { openai } from "@ai-sdk/openai";
+import { getAIModel } from "../../ai";
 import { z } from "zod";
 import { OutreachStrategy, OutreachStrategyContext } from "./OutreachStrategy";
 
 export class LinkedInStrategy implements OutreachStrategy {
   async generate(context: OutreachStrategyContext) {
     const { object } = await generateObject({
-      model: openai("gpt-4o"),
+      model: getAIModel(),
       schema: z.object({
         connectionRequest: z.string().max(290).describe("A personalized LinkedIn connection request note. MUST BE STRICTLY UNDER 290 CHARACTERS including spaces."),
         pitchHook: z.string().describe("A follow-up conversational pitch message once the connection is accepted. Keep it casual, direct, and under 100 words."),

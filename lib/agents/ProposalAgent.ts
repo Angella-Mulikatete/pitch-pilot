@@ -1,5 +1,5 @@
 import { generateObject } from "ai";
-import { openai } from "@ai-sdk/openai";
+import { getAIModel } from "../ai";
 import { z } from "zod";
 
 export class ProposalAgent {
@@ -29,7 +29,7 @@ export class ProposalAgent {
     }
 
     const { object } = await generateObject({
-      model: openai("gpt-4o"),
+      model: getAIModel(),
       schema: z.object({
         proposalDraft: z.string().describe("A comprehensive, professional markdown-formatted sales proposal draft (executive summary, technical proposal, timelines, and credentials)"),
         pricingTiers: z.array(

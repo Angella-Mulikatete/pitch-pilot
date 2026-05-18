@@ -1,5 +1,5 @@
 import { generateObject } from "ai";
-import { openai } from "@ai-sdk/openai";
+import { getAIModel } from "../ai";
 import { ToolFactory } from "../tools/ToolFactory";
 import { z } from "zod";
 
@@ -20,7 +20,7 @@ export class VettingAgent {
 
     // 2. Evaluate against ICP
     const { object } = await generateObject({
-      model: openai("gpt-4o"),
+      model: getAIModel(),
       schema: z.object({
         fitScore: z.number().min(0).max(100).describe("A score from 0 to 100 indicating how well the job matches the ICP."),
         jobTitle: z.string().describe("The inferred job title or project name"),

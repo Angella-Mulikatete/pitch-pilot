@@ -1,12 +1,12 @@
 import { generateObject } from "ai";
-import { openai } from "@ai-sdk/openai";
+import { getAIModel } from "../../ai";
 import { z } from "zod";
 import { OutreachStrategy, OutreachStrategyContext } from "./OutreachStrategy";
 
 export class EmailStrategy implements OutreachStrategy {
   async generate(context: OutreachStrategyContext) {
     const { object } = await generateObject({
-      model: openai("gpt-4o"),
+      model: getAIModel(),
       schema: z.object({
         subject: z.string().describe("A short, hyper-engaging email subject line (avoid spam words, keep it personal and curious)"),
         body: z.string().describe("The email body text in plain text or with standard linebreaks. Use a professional, warm, value-driven, and brief tone."),
